@@ -1,0 +1,87 @@
+name: CD
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag already in ECR to redeploy (rollback), e.g. sha-<commit>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-stage
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  publish:
+    if: github.event_name == 'push'
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: stage
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image_tag: sha-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gha-publish-${{ github.run_id }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build and push stage image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: compose/django/Dockerfile
+          target: stage
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:sha-${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:develop
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    # Runs after publish on push, or alone on a manual rollback (publish skipped).
+    if: ${{ !cancelled() && !failure() }}
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: stage
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gha-deploy-${{ github.run_id }}
+
+      - name: Deploy to stage
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag || needs.publish.outputs.image_tag }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          DEPLOY_BUCKET: ${{ vars.DEPLOY_BUCKET }}
+        run: scripts/ci/deploy-stage.sh
