@@ -8,7 +8,7 @@ set -euo pipefail
 : "${AWS_REGION:?AWS_REGION is required}"
 
 PARAMETERS_PATH='/peru-town-hub/stage/'
-HEALTH_URL='http://localhost/api/health/'
+HEALTH_URL='http://localhost/api/v1/health/'
 COMPOSE=(docker compose -f docker-compose.stage.yml)
 
 cd "$(dirname "$0")"

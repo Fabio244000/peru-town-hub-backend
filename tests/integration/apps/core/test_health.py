@@ -4,7 +4,7 @@ from rest_framework.test import APIClient
 
 from apps.core.constants import HEALTH_DETAIL_OK, HEALTH_STATUS_OK
 
-HEALTH_URL = '/api/health/'
+HEALTH_URL = '/api/v1/health/'
 
 
 @pytest.mark.django_db
