@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: Image tag already in ECR to redeploy (rollback), e.g. sha-<commit>
+        description: 'Image tag to redeploy: sha- followed by the full 40-character commit SHA'
         required: true
         type: string
 
@@ -42,21 +42,39 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: gha-publish-${{ github.run_id }}
 
+      # Tags are immutable: a re-run reuses the image already pushed for this commit.
+      - name: Check if image already exists
+        id: existing
+        env:
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          if scripts/ci/ecr-image-exists.sh "$ECR_REPOSITORY" "$IMAGE_TAG"; then
+            echo "::notice::$IMAGE_TAG already in ECR, skipping build"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Log in to Amazon ECR
+        if: steps.existing.outputs.exists == 'false'
         id: ecr
         uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.existing.outputs.exists == 'false'
 
+      # provenance: false pushes a single image manifest (no index or attestation),
+      # so the lifecycle policy's 10-image limit means 10 deployable versions.
       - name: Build and push stage image
+        if: steps.existing.outputs.exists == 'false'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: compose/django/Dockerfile
           target: stage
-          tags: |
-            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:sha-${{ github.sha }}
-            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:develop
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:sha-${{ github.sha }}
+          provenance: false
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
