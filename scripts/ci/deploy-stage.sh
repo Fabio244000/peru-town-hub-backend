@@ -13,6 +13,12 @@ S3_PREFIX="s3://$DEPLOY_BUCKET/stage"
 REMOTE_DIR='/opt/peru-town-hub'
 POLL_SECONDS=10
 MAX_POLLS=90
+IMAGE_TAG_PATTERN='^sha-[0-9a-f]{40}$'
+
+if [[ ! "$IMAGE_TAG" =~ $IMAGE_TAG_PATTERN ]]; then
+    echo "::error::Invalid image tag '$IMAGE_TAG'. Expected sha- followed by the full 40-character commit SHA."
+    exit 1
+fi
 
 cd "$(dirname "$0")/../.."
 
@@ -20,11 +26,7 @@ account_id=$(aws sts get-caller-identity --query Account --output text)
 ecr_image="$account_id.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
 
 echo "Checking that $IMAGE_TAG exists in $ECR_REPOSITORY"
-found=$(aws ecr batch-get-image \
-    --repository-name "$ECR_REPOSITORY" \
-    --image-ids imageTag="$IMAGE_TAG" \
-    --query 'length(images)' --output text)
-if [ "$found" -eq 0 ]; then
+if ! scripts/ci/ecr-image-exists.sh "$ECR_REPOSITORY" "$IMAGE_TAG"; then
     echo "::error::Image tag $IMAGE_TAG not found in $ECR_REPOSITORY"
     exit 1
 fi
