@@ -22,8 +22,9 @@ services:
     build:
       context: .
       dockerfile: compose/django/Dockerfile
+      target: local
     container_name: hub_web
-    command: python manage.py runserver 0.0.0.0:8000
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:

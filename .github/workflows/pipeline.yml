@@ -79,6 +79,36 @@ jobs:
       - name: Install pip-audit
         run: pip install pip-audit==2.10.1
 
-      # Switch to requirements/stage.txt in Phase 4, once it lists the deployed deps.
       - name: Audit dependencies
-        run: pip-audit -r requirements/base.txt
+        run: pip-audit -r requirements/stage.txt
+
+  build:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build stage image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: compose/django/Dockerfile
+          target: stage
+          tags: peru-town-hub-backend:stage
+          load: true
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check stage deployment settings
+        env:
+          DJANGO_SECRET_KEY: ${{ secrets.CI_DJANGO_SECRET_KEY }}
+        run: |
+          docker run --rm --entrypoint python \
+            --env-file .env.example \
+            -e DJANGO_SECRET_KEY \
+            -e DJANGO_SETTINGS_MODULE=config.settings.stage \
+            peru-town-hub-backend:stage \
+            manage.py check --deploy --fail-level WARNING
