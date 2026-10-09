@@ -98,3 +98,4 @@ venv.bak/
 .nfs*
 .idea
 docs
+CLAUDE.md
