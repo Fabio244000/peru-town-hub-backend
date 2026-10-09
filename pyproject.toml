@@ -37,4 +37,4 @@ indent-style = "space"
 DJANGO_SETTINGS_MODULE = "config.settings.local"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
-addopts = "--cov=apps --cov-report=term-missing"
+addopts = "--cov=apps --cov-report=term-missing --cov-fail-under=90"

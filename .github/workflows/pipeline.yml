@@ -1,0 +1,84 @@
+name: Pipeline
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install pre-commit
+        run: pip install "$(grep '^pre-commit==' requirements/local.txt)"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # .env.example is the single source of truth; only secrets come from GitHub.
+      - name: Create .env from .env.example
+        env:
+          DJANGO_SECRET_KEY: ${{ secrets.CI_DJANGO_SECRET_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+        run: |
+          if [ -z "$DJANGO_SECRET_KEY" ] || [ -z "$POSTGRES_PASSWORD" ]; then
+            echo "::error::Missing CI_DJANGO_SECRET_KEY or CI_POSTGRES_PASSWORD secret"
+            exit 1
+          fi
+          cp .env.example .env
+          sed -i '/^DJANGO_SECRET_KEY=/d; /^POSTGRES_PASSWORD=/d' .env
+          # Docker Compose interpolates "$" in env files, so escape it as "$$".
+          printf 'DJANGO_SECRET_KEY=%s\nPOSTGRES_PASSWORD=%s\n' \
+            "${DJANGO_SECRET_KEY//\$/\$\$}" "${POSTGRES_PASSWORD//\$/\$\$}" >> .env
+
+      - name: Build image
+        run: docker compose build web
+
+      - name: Check for missing migrations
+        run: docker compose run --rm web python manage.py makemigrations --check --dry-run
+
+      - name: Run tests
+        run: docker compose run --rm web pytest
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install pip-audit
+        run: pip install pip-audit==2.10.1
+
+      # Switch to requirements/stage.txt in Phase 4, once it lists the deployed deps.
+      - name: Audit dependencies
+        run: pip-audit -r requirements/base.txt
