@@ -19,7 +19,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'apps.core',
+    'apps.health',
 ]
 
 MIDDLEWARE = [
@@ -78,3 +80,24 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# API routes hang from <API_PREFIX>/<API_URL_VERSION>/ (e.g. api/v1/)
+API_PREFIX = 'api'
+API_URL_VERSION = 'v1'
+
+# DRF settings
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'EXCEPTION_HANDLER': 'apps.core.exception_handlers.custom_exception_handler',
+    'DEFAULT_RENDERER_CLASSES': [
+        'apps.core.renderers.EnvelopeJSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ],
+}
+
+# SWAGGER settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Community Town API',
+    'VERSION': env('API_VERSION', default='1.0.0'),
+    'SERVE_INCLUDE_SCHEMA': False,
+}

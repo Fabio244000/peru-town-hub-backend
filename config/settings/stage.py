@@ -1,5 +1,5 @@
 from .base import *  # noqa
-from .base import BASE_DIR, MIDDLEWARE
+from .base import BASE_DIR, MIDDLEWARE, env
 
 DEBUG = False
 
@@ -29,6 +29,21 @@ SILENCED_SYSTEM_CHECKS = [
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'handlers': {'console': {'class': 'logging.StreamHandler'}},
-    'root': {'handlers': ['console'], 'level': 'INFO'},
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+    },
 }
