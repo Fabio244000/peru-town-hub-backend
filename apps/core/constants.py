@@ -1,6 +1,4 @@
-HEALTH_STATUS_OK = 'OK'
-HEALTH_STATUS_ERROR = 'ERROR'
-HEALTH_DETAIL_OK = 'El sistema está activo'
-HEALTH_ERRORS_SEPARATOR = '; '
-
-DATABASE_INTEGRATION_ERROR = 'Error en la integración con la base de datos'
+# Generic messages used by the exception handler for every module.
+VALIDATION_ERROR_MESSAGE = 'Error de validación'
+INTERNAL_SERVER_ERROR_MESSAGE = 'Error interno del servidor'
+NOT_FOUND_MESSAGE = 'Recurso no encontrado'
