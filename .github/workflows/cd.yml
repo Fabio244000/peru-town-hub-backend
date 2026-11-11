@@ -19,22 +19,29 @@ concurrency:
 
 jobs:
   ci:
+    name: CI
     if: github.event_name == 'push'
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
+    # actionlint does not accept the self-repository syntax ($/) yet.
+    uses: ./.github/workflows/ci.yml # zizmor: ignore[self-repository]
+    with:
+      full-suite: true
 
   publish:
+    name: Publish
     if: github.event_name == 'push'
     needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: stage
     permissions:
-      contents: read
-      id-token: write
+      contents: read # checkout
+      id-token: write # OIDC token to assume the AWS role
     outputs:
       image_tag: sha-${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
@@ -76,20 +83,24 @@ jobs:
           tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:sha-${{ github.sha }}
           provenance: false
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=stage
+          cache-to: type=gha,mode=max,scope=stage
 
   deploy:
+    name: Deploy
     # Runs after publish on push, or alone on a manual rollback (publish skipped).
     if: ${{ !cancelled() && !failure() }}
     needs: publish
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: stage
     permissions:
-      contents: read
-      id-token: write
+      contents: read # checkout
+      id-token: write # OIDC token to assume the AWS role
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
