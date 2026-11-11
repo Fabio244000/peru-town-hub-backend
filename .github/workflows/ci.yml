@@ -3,9 +3,12 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
-  push:
-    branches: [main]
   workflow_call:
+    inputs:
+      full-suite:
+        description: Run the whole test suite with coverage instead of the affected tests
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -19,9 +22,13 @@ env:
 
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -39,39 +46,60 @@ jobs:
         run: pre-commit run --all-files --show-diff-on-failure
 
   test:
+    name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
+      # The whole history, so a pull request can be compared with its base.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-      # .env.example is the single source of truth; only secrets come from GitHub.
-      - name: Create .env from .env.example
-        env:
-          DJANGO_SECRET_KEY: ${{ secrets.CI_DJANGO_SECRET_KEY }}
-          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
-        run: |
-          if [ -z "$DJANGO_SECRET_KEY" ] || [ -z "$POSTGRES_PASSWORD" ]; then
-            echo "::error::Missing CI_DJANGO_SECRET_KEY or CI_POSTGRES_PASSWORD secret"
-            exit 1
-          fi
-          cp .env.example .env
-          sed -i '/^DJANGO_SECRET_KEY=/d; /^POSTGRES_PASSWORD=/d' .env
-          # Docker Compose interpolates "$" in env files, so escape it as "$$".
-          printf 'DJANGO_SECRET_KEY=%s\nPOSTGRES_PASSWORD=%s\n' \
-            "${DJANGO_SECRET_KEY//\$/\$\$}" "${POSTGRES_PASSWORD//\$/\$\$}" >> .env
+      - name: Create .env with random secrets
+        run: scripts/ci/create_ci_env.sh
 
-      - name: Build image
-        run: docker compose build web
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Cached build of the image docker-compose.yml names for the web service.
+      - name: Build test image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: compose/django/Dockerfile
+          target: local
+          tags: peru-town-hub-backend:local
+          load: true
+          push: false
+          cache-from: type=gha,scope=local
+          cache-to: type=gha,mode=max,scope=local
 
       - name: Check for missing migrations
         run: docker compose run --rm web python manage.py makemigrations --check --dry-run
 
-      - name: Run tests
+      - name: Run the whole suite
+        if: inputs.full-suite
         run: docker compose run --rm web pytest
 
+      # When the affected tests cannot be computed, the whole suite runs.
+      - name: Run the affected tests
+        if: ${{ !inputs.full-suite }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          selected=$(git diff --name-only "$BASE_SHA" HEAD | python3 scripts/ci/select_tests.py) || selected=tests
+          echo "Running: $selected"
+          read -ra paths <<< "$selected"
+          docker compose run --rm web pytest "${paths[@]}" --no-cov
+
   audit:
+    name: Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -84,10 +112,17 @@ jobs:
         run: pip-audit -r requirements/stage.txt
 
   build:
+    name: Build
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create .env with random secrets
+        run: scripts/ci/create_ci_env.sh
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -100,16 +135,13 @@ jobs:
           tags: peru-town-hub-backend:stage
           load: true
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=stage
+          cache-to: type=gha,mode=max,scope=stage
 
       - name: Check stage deployment settings
-        env:
-          DJANGO_SECRET_KEY: ${{ secrets.CI_DJANGO_SECRET_KEY }}
         run: |
           docker run --rm --entrypoint python \
-            --env-file .env.example \
-            -e DJANGO_SECRET_KEY \
+            --env-file .env \
             -e DJANGO_SETTINGS_MODULE=config.settings.stage \
             peru-town-hub-backend:stage \
             manage.py check --deploy --fail-level WARNING
