@@ -17,13 +17,14 @@ Including another URLconf
 
 from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import URLPattern, URLResolver, include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 API_BASE_PATH = f'{settings.API_PREFIX}/{settings.API_URL_VERSION}/'
 
-api_patterns = [
+api_patterns: list[URLPattern | URLResolver] = [
     path('', include('apps.health.urls')),
+    path('', include('apps.accounts.urls')),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path(
         'docs/',

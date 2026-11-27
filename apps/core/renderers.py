@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 from rest_framework import status
@@ -10,7 +11,7 @@ class EnvelopeJSONRenderer(JSONRenderer):
         self,
         data: Any,
         accepted_media_type: str | None = None,
-        renderer_context: dict[str, Any] | None = None,
+        renderer_context: Mapping[str, Any] | None = None,
     ) -> bytes:
         response = (renderer_context or {}).get('response')
         if response is not None and self._is_success_with_body(response):

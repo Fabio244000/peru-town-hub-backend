@@ -38,6 +38,7 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.stage \
     POSTGRES_DB=placeholder POSTGRES_USER=placeholder \
     POSTGRES_PASSWORD=placeholder POSTGRES_HOST=placeholder \
     POSTGRES_PORT=5432 \
+    JWT_SIGNING_KEY=placeholder SUPPORT_EMAIL=placeholder \
     python manage.py collectstatic --noinput \
     && chown -R app:app /app/staticfiles
 
@@ -45,4 +46,4 @@ USER app
 
 EXPOSE 8000
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]

@@ -1,13 +1,18 @@
 from .base import *  # noqa
-from .base import BASE_DIR, MIDDLEWARE, env
+from .base import BASE_DIR, LOGGING, MIDDLEWARE
 
 DEBUG = False
 
+# whitenoise goes right after SecurityMiddleware (its docs).
+_SECURITY_MIDDLEWARE = MIDDLEWARE.index('django.middleware.security.SecurityMiddleware')
 MIDDLEWARE = [
-    MIDDLEWARE[0],
+    *MIDDLEWARE[: _SECURITY_MIDDLEWARE + 1],
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    *MIDDLEWARE[1:],
+    *MIDDLEWARE[_SECURITY_MIDDLEWARE + 1 :],
 ]
+
+# One JSON line per event: CloudWatch keeps a traceback in one event.
+LOGGING['handlers']['console']['formatter'] = 'json'
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STORAGES = {
@@ -25,25 +30,3 @@ SILENCED_SYSTEM_CHECKS = [
     'security.W012',
     'security.W016',
 ]
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{asctime} {levelname} {name} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'stream': 'ext://sys.stdout',
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': env('DJANGO_LOG_LEVEL', default='INFO'),
-    },
-}

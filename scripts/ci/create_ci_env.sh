@@ -14,6 +14,11 @@ random_value() {
     python3 -c 'import secrets; print(secrets.token_urlsafe(50))'
 }
 
-sed '/^DJANGO_SECRET_KEY=/d; /^POSTGRES_PASSWORD=/d' .env.example > .env
-printf 'DJANGO_SECRET_KEY=%s\nPOSTGRES_PASSWORD=%s\n' "$(random_value)" "$(random_value)" >> .env
+while IFS= read -r line; do
+    if [[ $line =~ ^([A-Z0-9_]+)=$ ]]; then
+        printf '%s=%s\n' "${BASH_REMATCH[1]}" "$(random_value)"
+    else
+        printf '%s\n' "$line"
+    fi
+done < .env.example > .env
 chmod 600 .env

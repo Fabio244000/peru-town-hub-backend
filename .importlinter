@@ -1,0 +1,31 @@
+[importlinter]
+root_package = apps
+
+[importlinter:contract:module-layers]
+name = Each module: interface -> core -> models
+type = layers
+containers =
+    apps.*
+layers =
+    (apis) : (serializers) : (apidocs) : (urls) : (admin) : (management)
+    (services) : (selectors)
+    (models)
+
+[importlinter:contract:core-and-common]
+name = core and common import no module
+type = forbidden
+source_modules =
+    apps.core
+    apps.common
+forbidden_modules =
+    apps.accounts
+    apps.health
+    apps.locations
+
+[importlinter:contract:independent-modules]
+name = Modules are independent (architecture.md records any dependency)
+type = independence
+modules =
+    apps.accounts
+    apps.health
+    apps.locations

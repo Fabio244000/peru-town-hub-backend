@@ -4,10 +4,10 @@ from django.urls import reverse
 from rest_framework import exceptions
 from rest_framework.test import APIClient
 
-from apps.core.constants import NOT_FOUND_MESSAGE
+from apps.core.constants import NOT_FOUND_CODE, NOT_FOUND_MESSAGE
 
 
-def test_drf_errors_are_returned_with_the_envelope():
+def test_drf_errors_are_returned_with_the_envelope_and_their_code():
     response = APIClient().post(reverse('health'))
 
     assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
@@ -15,7 +15,7 @@ def test_drf_errors_are_returned_with_the_envelope():
         'success': False,
         'message': str(exceptions.MethodNotAllowed('POST').detail),
         'data': None,
-        'detail': None,
+        'detail': {'code': exceptions.MethodNotAllowed.default_code},
     }
 
 
@@ -27,5 +27,11 @@ def test_unknown_url_returns_json_not_found_envelope():
         'success': False,
         'message': NOT_FOUND_MESSAGE,
         'data': None,
-        'detail': None,
+        'detail': {'code': NOT_FOUND_CODE},
     }
+
+
+def test_every_response_sends_its_request_id():
+    response = APIClient().get('/not-exist/', HTTP_X_REQUEST_ID='3f2c9a1e')
+
+    assert response['X-Request-ID'] == '3f2c9a1e'

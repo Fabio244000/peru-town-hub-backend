@@ -44,6 +44,10 @@ CATALOG_NOT_FOUND = 'No existe el archivo {path}'
 CATALOG_UNREADABLE = 'El archivo {path} está mal escrito (línea {line})'
 LOCATION_INVALID = 'La ubicación {location} tiene datos inválidos: {errors}'
 CODE_REPEATED = 'El código {code} está repetido'
+CATALOG_NOT_FOUND_CODE = 'catalog_not_found'
+CATALOG_UNREADABLE_CODE = 'catalog_unreadable'
+LOCATION_INVALID_CODE = 'location_invalid'
+CODE_REPEATED_CODE = 'code_repeated'
 
 # load_locations command.
 LOAD_LOCATIONS_HELP = 'Carga o actualiza las ubicaciones desde el catálogo (YAML)'

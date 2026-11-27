@@ -12,6 +12,7 @@ from apps.health.constants import (
     DEPENDENCY_ERROR,
     DEPENDENCY_OK,
     HEALTH_OK_MESSAGE,
+    SERVICE_UNAVAILABLE_CODE,
 )
 
 
@@ -41,7 +42,10 @@ def test_health_reports_which_dependency_failed(monkeypatch):
         'success': False,
         'message': DATABASE_INTEGRATION_ERROR,
         'data': None,
-        'detail': {DATABASE_DEPENDENCY: DEPENDENCY_ERROR},
+        'detail': {
+            'code': SERVICE_UNAVAILABLE_CODE,
+            DATABASE_DEPENDENCY: DEPENDENCY_ERROR,
+        },
     }
 
 

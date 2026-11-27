@@ -12,7 +12,7 @@ HEALTH_URL='http://localhost/api/v1/health/'
 COMPOSE=(docker compose -f docker-compose.stage.yml)
 
 cd "$(dirname "$0")"
-export ECR_IMAGE IMAGE_TAG
+export ECR_IMAGE IMAGE_TAG AWS_REGION
 
 echo "Writing .env from Parameter Store ($PARAMETERS_PATH)"
 aws ssm get-parameters-by-path \
@@ -35,6 +35,7 @@ echo "Deploying $ECR_IMAGE:$IMAGE_TAG"
 "${COMPOSE[@]}" pull
 "${COMPOSE[@]}" up -d --wait db
 "${COMPOSE[@]}" run --rm web python manage.py migrate --noinput
+"${COMPOSE[@]}" run --rm web python manage.py createcachetable
 "${COMPOSE[@]}" up -d --remove-orphans
 
 echo "Checking $HEALTH_URL"

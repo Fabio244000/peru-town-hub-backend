@@ -17,7 +17,10 @@ pytestmark = pytest.mark.django_db
 
 
 def valid_catalog() -> dict:
-    """Ayacucho → Sucre → Morcolla → Pincocalla (with coordinates) and Chumbes (without)."""
+    """Ayacucho → Sucre → Morcolla → Pincocalla and Chumbes.
+
+    Pincocalla has coordinates; Chumbes does not.
+    """
     return {
         'code': '050000',
         'name': 'Ayacucho',
