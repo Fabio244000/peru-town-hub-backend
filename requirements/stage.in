@@ -1,5 +1,5 @@
 -r base.in
 -c base.txt
 
-gunicorn==26.2.0
+gunicorn==27.0.1
 whitenoise==6.12.0
