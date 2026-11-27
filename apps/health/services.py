@@ -1,5 +1,5 @@
 from apps.core.exceptions import ServiceUnavailableError
-from apps.health.constants import HEALTH_ERROR_SEPARATOR
+from apps.health.constants import HEALTH_ERROR_SEPARATOR, SERVICE_UNAVAILABLE_CODE
 from apps.health.integrations.dependencies_check import get_dependencies_check
 from apps.health.integrations.dependencies_check.port import DependenciesCheck
 
@@ -13,6 +13,8 @@ class HealthCheckService:
 
         if not result.is_healthy:
             raise ServiceUnavailableError(
-                HEALTH_ERROR_SEPARATOR.join(result.errors), detail=result.statuses
+                HEALTH_ERROR_SEPARATOR.join(result.errors),
+                SERVICE_UNAVAILABLE_CODE,
+                detail=result.statuses,
             )
         return result.statuses

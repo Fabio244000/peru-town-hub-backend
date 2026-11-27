@@ -33,9 +33,14 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/local.txt
 
-      - name: Install pre-commit
-        run: pip install "$(grep '^pre-commit==' requirements/local.txt)"
+      - name: Create .env with random secrets
+        run: scripts/ci/create_ci_env.sh
+
+      - name: Install the project's tools
+        run: pip install -r requirements/local.txt
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

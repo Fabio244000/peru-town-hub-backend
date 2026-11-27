@@ -1,5 +1,6 @@
 HEALTH_OK_MESSAGE = 'El sistema está activo'
 HEALTH_ERROR_SEPARATOR = '; '
+SERVICE_UNAVAILABLE_CODE = 'service_unavailable'
 
 DEPENDENCY_OK = 'ok'
 DEPENDENCY_ERROR = 'error'

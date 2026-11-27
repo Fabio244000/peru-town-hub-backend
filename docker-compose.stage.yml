@@ -1,3 +1,9 @@
+x-cloudwatch-logging: &cloudwatch-logging
+  awslogs-region: ${AWS_REGION:?AWS_REGION is required}
+  tag: '{{.Name}}'
+  mode: non-blocking
+  max-buffer-size: 4m
+
 services:
   db:
     image: postgres:16-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
@@ -11,6 +17,11 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        <<: *cloudwatch-logging
+        awslogs-group: /peru-town-hub/stage/db
 
   web:
     image: ${ECR_IMAGE:?ECR_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
@@ -22,6 +33,11 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        <<: *cloudwatch-logging
+        awslogs-group: /peru-town-hub/stage/web
 
 volumes:
   postgres_data:

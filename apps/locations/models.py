@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -65,6 +67,10 @@ def location_constraints(code_pattern: str) -> list[models.BaseConstraint]:
 
 
 class Location(BaseModel):
+    # Divisions use this code; a populated center overrides it with its own.
+    code = code_field(DIVISION_CODE_LENGTH, DIVISION_CODE_PATTERN)
+    objects: ClassVar[models.Manager['Location']]
+
     name = models.CharField(NAME_LABEL, max_length=NAME_MAX_LENGTH)
     altitude = models.IntegerField(
         ALTITUDE_LABEL,
@@ -97,8 +103,6 @@ class Location(BaseModel):
 
 
 class Department(Location):
-    code = code_field(DIVISION_CODE_LENGTH, DIVISION_CODE_PATTERN)
-
     class Meta:
         verbose_name = DEPARTMENT_LABEL
         verbose_name_plural = DEPARTMENTS_LABEL
@@ -106,7 +110,6 @@ class Department(Location):
 
 
 class Province(Location):
-    code = code_field(DIVISION_CODE_LENGTH, DIVISION_CODE_PATTERN)
     department = models.ForeignKey(
         Department, models.PROTECT, verbose_name=DEPARTMENT_LABEL
     )
@@ -118,7 +121,6 @@ class Province(Location):
 
 
 class District(Location):
-    code = code_field(DIVISION_CODE_LENGTH, DIVISION_CODE_PATTERN)
     province = models.ForeignKey(Province, models.PROTECT, verbose_name=PROVINCE_LABEL)
 
     class Meta:

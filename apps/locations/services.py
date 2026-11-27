@@ -4,18 +4,22 @@ from pathlib import Path
 
 import yaml
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 
 from apps.core.exceptions import ApplicationError
 from apps.locations.constants import (
     BULK_BATCH_SIZE,
     CATALOG_NOT_FOUND,
+    CATALOG_NOT_FOUND_CODE,
     CATALOG_UNREADABLE,
+    CATALOG_UNREADABLE_CODE,
     CODE_REPEATED,
+    CODE_REPEATED_CODE,
     DEPARTMENTS_LABEL,
     DISTRICTS_LABEL,
     LOCATION_INVALID,
+    LOCATION_INVALID_CODE,
     POPULATED_CENTERS_LABEL,
     PROVINCES_LABEL,
 )
@@ -76,11 +80,13 @@ class LocationCatalogService:
             with path.open(encoding='utf-8') as file:
                 return yaml.safe_load(file)
         except FileNotFoundError as error:
-            raise ApplicationError(CATALOG_NOT_FOUND.format(path=path)) from error
+            raise ApplicationError(
+                CATALOG_NOT_FOUND.format(path=path), CATALOG_NOT_FOUND_CODE
+            ) from error
         except yaml.MarkedYAMLError as error:
-            line = error.problem_mark.line + 1
+            line = error.problem_mark.line + 1  # type: ignore[union-attr]
             message = CATALOG_UNREADABLE.format(path=path, line=line)
-            raise ApplicationError(message) from error
+            raise ApplicationError(message, CATALOG_UNREADABLE_CODE) from error
 
     def _save_level(
         self, model: type[Location], entries: list[Entry], now: datetime
@@ -105,8 +111,9 @@ class LocationCatalogService:
         values = {field: self._yaml_value(record.get(field)) for field in FIELDS[model]}
         if isinstance(values['name'], str):
             values['name'] = values['name'].strip()
-        if PARENT_FIELD[model]:
-            values[PARENT_FIELD[model]] = parent
+        parent_field = PARENT_FIELD[model]
+        if parent_field:
+            values[parent_field] = parent
         location = model(**values, created_at=now, updated_at=now)
         self._validate(location)
         return location
@@ -127,18 +134,26 @@ class LocationCatalogService:
             )
         except ValidationError as error:
             errors = '; '.join(
-                f'{location._meta.get_field(field).verbose_name}: {" ".join(messages)}'
+                f'{self._field_label(location, field)}: {" ".join(messages)}'
                 for field, messages in error.message_dict.items()
             )
             message = LOCATION_INVALID.format(
                 location=location.code or location.name, errors=errors
             )
-            raise ApplicationError(message, detail=error.message_dict) from error
+            raise ApplicationError(
+                message, LOCATION_INVALID_CODE, detail=error.message_dict
+            ) from error
+
+    def _field_label(self, location: Location, name: str) -> str:
+        field = location._meta.get_field(name)
+        return str(field.verbose_name) if isinstance(field, models.Field) else name
 
     def _ensure_unique_codes(self, locations: list[Location]) -> None:
         for code, count in Counter(location.code for location in locations).items():
             if count > 1:
-                raise ApplicationError(CODE_REPEATED.format(code=code))
+                raise ApplicationError(
+                    CODE_REPEATED.format(code=code), CODE_REPEATED_CODE
+                )
 
     def _upsert(self, model: type[Location], locations: list[Location]) -> None:
         parent_field = PARENT_FIELD[model]

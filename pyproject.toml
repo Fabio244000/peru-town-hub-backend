@@ -10,21 +10,19 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E",
-    "W",
-    "F",
-    "I",
-    "N",
-    "B",
-    "C4",
-    "SIM",
-    "UP",
-    "PLR0915",
+    "E", "W", "F", "I", "N", "B", "C4", "SIM", "UP", "PLR0915",
+    "S", "ANN", "DJ", "DTZ", "T20", "PT", "RUF", "ERA",
+]
+ignore = [
+    "ANN401",  # Any is the honest type of JSON payloads (the envelope's data/detail)
+    "RUF012",  # Django and DRF class attributes (permission_classes, Meta) are lists by design
 ]
 
-ignore = [
-    "E501",
-]
+[tool.ruff.lint.per-file-ignores]
+"tests/**/test_*.py" = ["ANN"]  # only fixtures (conftest.py) are annotated
+"tests/**" = ["S101", "S105", "S106"]  # assert and test passwords
+"scripts/**" = ["T201"]  # scripts print their result
+"apps/*/constants.py" = ["S105"]  # user-facing texts named PASSWORD_*, not passwords
 
 [tool.ruff.lint.pylint]
 max-statements = 15
@@ -34,7 +32,23 @@ quote-style = "single"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.local"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
-addopts = "--cov=apps --cov-report=term-missing --cov-fail-under=90"
+addopts = "--ds=config.settings.test --strict-markers --cov=apps --cov-report=term-missing --cov-fail-under=90"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true
+omit = ["*/migrations/*"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+exclude = ["migrations/"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[[tool.mypy.overrides]]
+module = ["environ", "jsonschema"]
+ignore_missing_imports = true

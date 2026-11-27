@@ -30,3 +30,24 @@ repos:
     hooks:
       - id: zizmor
         args: [--no-progress, --persona=pedantic]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: [apps, config, tests, manage.py]
+      - id: lint-imports
+        name: Lint imports
+        entry: lint-imports
+        language: system
+        pass_filenames: false
+      - id: openapi-schema
+        name: OpenAPI schema
+        entry: python manage.py spectacular --validate --fail-on-warn --file /dev/null
+        language: system
+        pass_filenames: false
+        files: ^(apps|config)/
