@@ -41,6 +41,11 @@ filterwarnings = ["error"]
 branch = true
 omit = ["*/migrations/*"]
 
+[tool.django_migration_linter]
+no_cache = true
+# Contract-phase migrations (expand / contract): each name with its justification.
+ignore_name = []
+
 [tool.mypy]
 python_version = "3.12"
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
