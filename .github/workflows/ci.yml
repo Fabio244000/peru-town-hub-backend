@@ -82,6 +82,20 @@ jobs:
       - name: Check for missing migrations
         run: docker compose run --rm web python manage.py makemigrations --check --dry-run
 
+      - name: Check that every migration goes back
+        run: scripts/ci/migrations-round-trip.sh
+
+      # The image has no git, so the runner lists the migrations the pull request adds.
+      - name: Lint the new migrations
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git diff --name-only --diff-filter=A "$BASE_SHA" HEAD -- 'apps/*/migrations/*.py' > new-migrations.txt
+          cat new-migrations.txt
+          docker compose run --rm web python manage.py lintmigrations \
+            --include-migrations-from new-migrations.txt --warnings-as-errors
+
       - name: Run the whole suite
         if: inputs.full-suite
         run: docker compose run --rm web pytest

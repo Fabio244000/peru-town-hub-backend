@@ -8,6 +8,10 @@ anyio==4.16.0 \
     --hash=sha256:59bb03251907983d1603d27c3087ddb1e93299ea2163adcdba37899a4fb12ffb \
     --hash=sha256:c66ae634e0b8228396b801741beb3294326d4b6102f7bba4041c0dfb58c29026
     # via schemathesis
+appdirs==1.4.4 \
+    --hash=sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41 \
+    --hash=sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128
+    # via django-migration-linter
 argon2-cffi==25.1.0 \
     --hash=sha256:694ae5cc8a42f4c4e2bf2ca0e64e51e23a040c6a517a85074683d3959e1346c1 \
     --hash=sha256:fdc8b074db390fccb6eb4a3604ae7231f219aa669a2652e0f20e16ba513d5741
@@ -564,6 +568,7 @@ django==6.1.3 \
     #   -c requirements/base.txt
     #   -r requirements/base.in
     #   django-extensions
+    #   django-migration-linter
     #   django-stubs
     #   django-stubs-ext
     #   djangorestframework
@@ -578,6 +583,10 @@ django-environ==0.14.0 \
 django-extensions==4.1 \
     --hash=sha256:0699a7af28f2523bf8db309a80278519362cd4b6e1fd0a8cd4bf063e1e023336 \
     --hash=sha256:7b70a4d28e9b840f44694e3f7feb54f55d495f8b3fa6c5c0e5e12bcb2aa3cdeb
+    # via -r requirements/local.in
+django-migration-linter==7.0.0 \
+    --hash=sha256:62e9beb8255cf23a01d36dfd473f49445bcde3aed99582b66c76a3821853f154 \
+    --hash=sha256:e659aac2fc5f7241bc4e5a08e80eb764435da9f7cc7d1269bd84222f5550ba22
     # via -r requirements/local.in
 django-stubs==6.1.2 \
     --hash=sha256:d62b15fa5cbae79b1922d015e1454d299959d230221dadb23f65c749480b97ec \
